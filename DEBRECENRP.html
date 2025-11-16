@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<title>DebrecenRP</title>
+<style>
+  body {
+    margin: 0; height: 100vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: #111;
+    color: white;
+    font-family: monospace, monospace;
+    overflow: hidden;
+  }
+  a.button {
+    position: fixed;
+    top: 20px;
+    padding: 15px 40px;
+    background: #0a0a15;
+    color: white;
+    font-size: 24px;
+    border-radius: 50px;
+    box-shadow: 0 0 20px rgba(255,255,255,0.1) inset, 0 0 15px rgba(0,0,0,0.8);
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    transition: background 0.3s;
+  }
+  a.button:hover {
+    background: #151520;
+  }
+  #dc-button {
+    right: 20px;
+  }
+  #kuponok-button {
+    right: 140px;
+  }
+  #console-button {
+    right: 260px;
+  }
+  #title {
+    font-size: 50px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+    /* 3D forgatás */
+    animation: rotate3D 10s linear infinite;
+    transform-style: preserve-3d;
+    display: inline-block;
+  }
+  #subtitle {
+    font-size: 28px;
+    text-align: center;
+  }
+  @keyframes rotate3D {
+    0% { transform: rotateY(0deg) translateZ(0); }
+    100% { transform: rotateY(-360deg) translateZ(50px); }
+  }
+  #kupon-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: #222;
+    border-radius: 10px;
+    padding: 15px;
+    display: none;
+    width: 250px;
+    box-shadow: 0 0 15px rgba(255,255,255,0.1);
+  }
+  #kupon-panel button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 10px;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background: #444;
+    color: white;
+    transition: background 0.2s;
+  }
+  #kupon-panel button:hover {
+    background: #666;
+  }
+  #console-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: #222;
+    border-radius: 10px;
+    padding: 15px;
+    display: none;
+    width: 300px;
+    box-shadow: 0 0 15px rgba(255,255,255,0.1);
+  }
+  #console-panel input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: none;
+    font-size: 18px;
+  }
+  #console-panel button {
+    width: 100%;
+    padding: 10px;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background: #444;
+    color: white;
+    transition: background 0.2s;
+  }
+  #console-panel button:hover {
+    background: #666;
+  }
+</style>
+</head>
+<body>
+
+<!-- DC gomb -->
+<a href="https://discord.gg/mEHYt2nTvj" target="_blank" class="button" id="dc-button">DC</a>
+<!-- KUPONOK gomb -->
+<button class="button" id="kuponok-button">KUPONOK</button>
+<!-- KONZOL gomb -->
+<button class="button" id="console-button">KONZOL</button>
+
+<!-- Cím és alcím -->
+<div id="title">𝕯𝖊𝖇𝖗𝖊𝖈𝖊𝖓𝕽𝕻</div>
+<div id="subtitle">𝕬 𝖜𝖊𝖇𝖔𝖑𝖉𝕬𝕷</div>
+
+<!-- Kupon panel -->
+<div id="kupon-panel">
+  <button data-kupon="8k">8k</button>
+  <button data-kupon="16k">16k</button>
+  <button data-kupon="frakció">Frakció</button>
+  <button data-kupon="tulaj">Tulaj</button>
+  <button data-kupon="voice chat">Voice Chat</button>
+</div>
+
+<!-- Konzol panel -->
+<div id="console-panel">
+  <input type="password" id="admin-code-input" placeholder="Írd be az admin kódot..." />
+  <button id="check-code-button">Ellenőrzés</button>
+</div>
+
+<script>
+  const kuponokGomb = document.getElementById('kuponok-button');
+  const kuponPanel = document.getElementById('kupon-panel');
+  const consoleGomb = document.getElementById('console-button');
+  const consolePanel = document.getElementById('console-panel');
+  const adminInput = document.getElementById('admin-code-input');
+  const checkCodeBtn = document.getElementById('check-code-button');
+  const title = document.getElementById('title');
+  const subtitle = document.getElementById('subtitle');
+
+  // Események tárolása localStorage-ban
+  // Formátum: [{id: "001", action: "8k"}, ...]
+  function loadEsemények() {
+    const adat = localStorage.getItem('esemenyek');
+    return adat ? JSON.parse(adat) : [];
+  }
+  function saveEsemények(esemenyek) {
+    localStorage.setItem('esemenyek', JSON.stringify(esemenyek));
+  }
+
+  // Új ID generálása: mindig 3 számjegy, növekvő
+  function ujID() {
+    const esemenyek = loadEsemények();
+    if (esemenyek.length === 0) return "001";
+    const utolso = esemenyek[esemenyek.length - 1].id;
+    const szam = parseInt(utolso, 10) + 1;
+    return szam.toString().padStart(3, '0');
+  }
+
+  // Kupon gombok eseménye
+  kuponPanel.addEventListener('click', e => {
+    if (e.target.tagName === 'BUTTON') {
+      const kuponNev = e.target.dataset.kupon;
+      const id = ujID();
+
+      // Új esemény mentése
+      const esemenyek = loadEsemények();
+      esemenyek.push({ id: id, action: kuponNev });
+      saveEsemények(esemenyek);
+
+      // Másolás vágólapra
+      const szoveg = `ID: ${id} (${kuponNev}) vágólapra másolva. Nyiss ticketet a discord szerveren ezzel kapcsolatban.`;
+      navigator.clipboard.writeText(szoveg);
+
+      alert(szoveg);
+    }
+  });
+
+  // KUPONOK gomb - megjelenítés/elrejtés, title+subtitle eltüntetése
+  kuponokGomb.addEventListener('click', () => {
+    if (kuponPanel.style.display === 'none' || kuponPanel.style.display === '') {
+      kuponPanel.style.display = 'block';
+      consolePanel.style.display = 'none';
+      title.style.display = 'none';
+      subtitle.style.display = 'none';
+    } else {
+      kuponPanel.style.display = 'none';
+      title.style.display = 'block';
+      subtitle.style.display = 'block';
+    }
+  });
+
+  // KONZOL gomb - megjelenítés/elrejtés, title+subtitle eltüntetése
+  consoleGomb.addEventListener('click', () => {
+    if (consolePanel.style.display === 'none' || consolePanel.style.display === '') {
+      consolePanel.style.display = 'block';
+      kuponPanel.style.display = 'none';
+      title.style.display = 'none';
+      subtitle.style.display = 'none';
+      adminInput.value = '';
+    } else {
+      consolePanel.style.display = 'none';
+      title.style.display = 'block';
+      subtitle.style.display = 'block';
+    }
+  });
+
+  // Admin kód ellenőrzése és események kiíratása a konzolba
+  checkCodeBtn.addEventListener('click', () => {
+    const kod = adminInput.value.trim();
+    if (kod === 'ADMIN1') {
+      const esemenyek = loadEsemények();
+      if (esemenyek.length === 0) {
+        console.log("Nincs mentett esemény.");
+        alert("Nincs mentett esemény.");
+      } else {
+        console.log("=== Mentett események listája ===");
+        esemenyek.forEach(e => {
+          console.log(`ID: ${e.id} - Nyomott gomb: ${e.action}`);
+        });
+        alert("Események kiírva a konzolba.");
+      }
+    } else {
+      alert("Hibás admin kód!");
+    }
+  });
+</script>
+
+</body>
+</html>
